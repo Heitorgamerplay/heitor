@@ -3,238 +3,64 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz com Firebase Modular</title>
+<title>Login - Quiz</title>
 <script type="module">
-  // Firebase Modular
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
-  // Config Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyDhvaoeGhK_3XFcyj4rSCYNBoI2NKxX9co",
-    authDomain: "opaaaaaaa-87798.firebaseapp.com",
-    projectId: "opaaaaaaa-87798",
-    storageBucket: "opaaaaaaa-87798.firebasestorage.app",
-    messagingSenderId: "995009001020",
-    appId: "1:995009001020:web:375e0028cd6a02a998f539",
-    measurementId: "G-7310Q3Q19L"
-  };
+// Config Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyDhvaoeGhK_3XFcyj4rSCYNBoI2NKxX9co",
+  authDomain: "opaaaaaaa-87798.firebaseapp.com",
+  projectId: "opaaaaaaa-87798",
+  storageBucket: "opaaaaaaa-87798.firebasestorage.app",
+  messagingSenderId: "995009001020",
+  appId: "1:995009001020:web:375e0028cd6a02a998f539",
+  measurementId: "G-7310Q3Q19L"
+};
 
-  // Inicializa Firebase
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+// Inicializa Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-  let currentUser=null, currentQuestions=[], currentIndex=0, score=0, timer, timeLeft=15;
+// Cadastro
+window.register = async function(){
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("password").value;
+  try {
+    await createUserWithEmailAndPassword(auth,email,pass);
+    alert("Cadastro realizado! Faça login.");
+  } catch(e){ alert(e.message); }
+}
 
-  // --- Perguntas (20 por matéria) ---
-  const questions = {
-    matematica: [
-      {q:"Quanto é 5 + 3?", a:["6","7","8","9"], correct:"8"},
-      {q:"Quanto é 10 x 2?", a:["20","12","18","22"], correct:"20"},
-      {q:"Quanto é 15 ÷ 3?", a:["5","6","4","3"], correct:"5"},
-      {q:"Qual é o quadrado de 4?", a:["8","16","12","20"], correct:"16"},
-      {q:"Quanto é 7 - 2?", a:["5","6","4","3"], correct:"5"},
-      {q:"Quanto é 9 + 6?", a:["15","14","16","13"], correct:"15"},
-      {q:"Quanto é 12 x 2?", a:["22","24","26","20"], correct:"24"},
-      {q:"Quanto é 18 ÷ 6?", a:["2","3","4","5"], correct:"3"},
-      {q:"Qual é o quadrado de 5?", a:["25","20","15","30"], correct:"25"},
-      {q:"Quanto é 11 + 7?", a:["18","19","20","21"], correct:"18"},
-      {q:"Quanto é 14 - 9?", a:["5","6","7","4"], correct:"5"},
-      {q:"Quanto é 3 x 7?", a:["20","21","18","24"], correct:"21"},
-      {q:"Quanto é 16 ÷ 4?", a:["2","3","4","5"], correct:"4"},
-      {q:"Qual é o cubo de 2?", a:["6","8","4","10"], correct:"8"},
-      {q:"Quanto é 9 - 3?", a:["5","6","4","3"], correct:"6"},
-      {q:"Quanto é 7 + 8?", a:["14","15","16","13"], correct:"15"},
-      {q:"Quanto é 5 x 5?", a:["20","25","30","15"], correct:"25"},
-      {q:"Quanto é 20 ÷ 5?", a:["4","5","6","3"], correct:"4"},
-      {q:"Qual é o quadrado de 6?", a:["36","30","32","34"], correct:"36"},
-      {q:"Quanto é 8 + 7?", a:["14","15","16","13"], correct:"15"}
-    ],
-    historia: [
-      {q:"Quem descobriu o Brasil?", a:["Cabral","Pedro Álvares","Vasco","Cristóvão"], correct:"Cabral"},
-      {q:"Em que ano ocorreu a Proclamação da República?", a:["1889","1822","1500","1808"], correct:"1889"},
-      {q:"Quem foi o primeiro imperador do Brasil?", a:["Dom Pedro I","Dom Pedro II","Napoleão","Getúlio"], correct:"Dom Pedro I"},
-      {q:"Qual guerra aconteceu entre 1939 e 1945?", a:["1ª Guerra","2ª Guerra","Guerra Fria","Revolução"], correct:"2ª Guerra"},
-      {q:"Qual era o principal produto do ciclo do ouro?", a:["Ouro","Prata","Café","Açúcar"], correct:"Ouro"},
-      {q:"Quem foi Tiradentes?", a:["Revolucionário","Rei","Explorador","Escritor"], correct:"Revolucionário"},
-      {q:"Em que ano aconteceu a Independência do Brasil?", a:["1822","1808","1889","1500"], correct:"1822"},
-      {q:"Quem foi Getúlio Vargas?", a:["Presidente","Explorador","Rei","Cientista"], correct:"Presidente"},
-      {q:"O que foi a Revolução Industrial?", a:["Mudança econômica","Guerra","Descoberta","Evento esportivo"], correct:"Mudança econômica"},
-      {q:"Quem assinou a Lei Áurea?", a:["Princesa Isabel","Pedro I","Dom João","Getúlio"], correct:"Princesa Isabel"},
-      {q:"Qual era o período colonial do Brasil?", a:["1500-1822","1822-1889","1889-1930","1930-1945"], correct:"1500-1822"},
-      {q:"Quem foi Machado de Assis?", a:["Escritor","Presidente","Explorador","Cientista"], correct:"Escritor"},
-      {q:"Qual país foi aliado do Brasil na 2ª Guerra Mundial?", a:["Estados Unidos","Alemanha","Japão","Itália"], correct:"Estados Unidos"},
-      {q:"Quem foi Dom Pedro II?", a:["Imperador","Presidente","Explorador","Rei"], correct:"Imperador"},
-      {q:"O que foi a Inconfidência Mineira?", a:["Revolta","Guerra","Descoberta","Evento esportivo"], correct:"Revolta"},
-      {q:"Quem proclamou a República?", a:["Marechal Deodoro","Dom Pedro I","Pedro Álvares","Cabral"], correct:"Marechal Deodoro"},
-      {q:"O que foi a Revolução de 1930?", a:["Golpe político","Descoberta","Invenção","Guerra"], correct:"Golpe político"},
-      {q:"Quem foi Zumbi dos Palmares?", a:["Líder Quilombola","Rei","Explorador","Escritor"], correct:"Líder Quilombola"},
-      {q:"O que foi a Ditadura Militar no Brasil?", a:["Período autoritário","Revolução","Descoberta","Evento esportivo"], correct:"Período autoritário"},
-      {q:"Quem foi José Bonifácio?", a:["Patriota","Rei","Explorador","Cientista"], correct:"Patriota"}
-    ],
-    geografia: [
-      {q:"Qual é o maior país do mundo?", a:["Rússia","Brasil","China","EUA"], correct:"Rússia"},
-      {q:"Qual continente é o Egito?", a:["África","Ásia","Europa","América"], correct:"África"},
-      {q:"Qual é o rio mais longo do mundo?", a:["Nilo","Amazonas","Mississippi","Yangtzé"], correct:"Nilo"},
-      {q:"Qual é a capital do Brasil?", a:["Brasília","Rio","São Paulo","Salvador"], correct:"Brasília"},
-      {q:"Qual é o oceano entre América e Europa?", a:["Atlântico","Pacífico","Índico","Ártico"], correct:"Atlântico"},
-      {q:"Qual país é conhecido como 'Terra do Sol Nascente'?", a:["Japão","China","Índia","Coreia"], correct:"Japão"},
-      {q:"Qual é o ponto mais alto do mundo?", a:["Everest","K2","Mont Blanc","Aconcágua"], correct:"Everest"},
-      {q:"Qual é a capital da França?", a:["Paris","Londres","Roma","Berlim"], correct:"Paris"},
-      {q:"Qual é o maior deserto do mundo?", a:["Sahara","Gobi","Kalahari","Atacama"], correct:"Sahara"},
-      {q:"Qual é o menor país do mundo?", a:["Vaticano","Mônaco","San Marino","Liechtenstein"], correct:"Vaticano"},
-      {q:"Qual é a capital da Alemanha?", a:["Berlim","Munique","Frankfurt","Hamburgo"], correct:"Berlim"},
-      {q:"Qual rio passa pelo Egito?", a:["Nilo","Mississippi","Amazonas","Yangtzé"], correct:"Nilo"},
-      {q:"Qual é o país mais populoso?", a:["China","Índia","EUA","Brasil"], correct:"China"},
-      {q:"Qual é a capital da Itália?", a:["Roma","Milão","Veneza","Florença"], correct:"Roma"},
-      {q:"Qual é a maior floresta tropical?", a:["Amazônia","Congo","Sundaland","Daintree"], correct:"Amazônia"},
-      {q:"Qual é a capital da Argentina?", a:["Buenos Aires","Córdoba","Rosário","Mendoza"], correct:"Buenos Aires"},
-      {q:"Qual é o rio mais longo do Brasil?", a:["Amazonas","São Francisco","Tocantins","Paraná"], correct:"Amazonas"},
-      {q:"Qual país tem mais ilhas?", a:["Suécia","Noruega","Canadá","Indonésia"], correct:"Suécia"},
-      {q:"Qual é a capital do Japão?", a:["Tóquio","Osaka","Kyoto","Hiroshima"], correct:"Tóquio"},
-      {q:"Qual é o maior lago do mundo?", a:["Superior","Baikal","Vostok","Tanganica"], correct:"Superior"}
-    ]
-  };
-
-  // --- Funções do Quiz ---
-  function startQuiz(theme){
-    document.getElementById("login-container").classList.add("hidden");
-    document.getElementById("quiz-container").classList.remove("hidden");
-    const shuffled = questions[theme].sort(()=>0.5-Math.random());
-    currentQuestions = shuffled.slice(0,5);
-    currentIndex=0; score=0;
-    document.getElementById("score").classList.add("hidden");
-    document.getElementById("restart-btn").classList.add("hidden");
-    showQuestion();
-  }
-
-  function showQuestion(){
-    timeLeft=15;
-    document.getElementById("timer").innerText=`Tempo: ${timeLeft}s`;
-    clearInterval(timer);
-    timer=setInterval(()=>{
-      timeLeft--;
-      document.getElementById("timer").innerText=`Tempo: ${timeLeft}s`;
-      if(timeLeft<=0){ clearInterval(timer); selectAnswer(null); }
-    },1000);
-    const q=currentQuestions[currentIndex];
-    document.getElementById("question").innerText=q.q;
-    const answersDiv=document.getElementById("answers");
-    answersDiv.innerHTML="";
-    q.a.sort(()=>0.5-Math.random()).forEach(ans=>{
-      const btn=document.createElement("button");
-      btn.className="answer-btn";
-      btn.innerText=ans;
-      btn.onclick=()=>selectAnswer(ans);
-      answersDiv.appendChild(btn);
-    });
-  }
-
-  async function selectAnswer(answer){
-    clearInterval(timer);
-    const buttons=document.querySelectorAll(".answer-btn");
-    buttons.forEach(btn=>{
-      if(btn.innerText===currentQuestions[currentIndex].correct) btn.classList.add("correct");
-      else if(btn.innerText===answer) btn.classList.add("wrong");
-      btn.disabled=true;
-    });
-    if(answer===currentQuestions[currentIndex].correct) score++;
-    setTimeout(()=>{
-      currentIndex++;
-      if(currentIndex<currentQuestions.length) showQuestion();
-      else showScore();
-    },1000);
-  }
-
-  async function showScore(){
-    document.getElementById("question").classList.add("hidden");
-    document.getElementById("answers").classList.add("hidden");
-    const scoreDiv=document.getElementById("score");
-    scoreDiv.innerText=`${currentUser.email}, você acertou ${score} de ${currentQuestions.length} perguntas!`;
-    scoreDiv.classList.remove("hidden");
-    document.getElementById("restart-btn").classList.remove("hidden");
-
-    // Salvar no Firestore
-    try {
-      await addDoc(collection(db,"scores"),{user:currentUser.email,score:score,date:new Date()});
-    } catch(e){ console.error(e); }
-  }
-
-  function restartQuiz(){
-    document.getElementById("quiz-container").classList.add("hidden");
-    document.getElementById("login-container").classList.remove("hidden");
-    document.getElementById("question").classList.remove("hidden");
-    document.getElementById("answers").classList.remove("hidden");
-  }
-
-  // --- Login / Cadastro ---
-  window.register=async function(){
-    const email=document.getElementById("email").value;
-    const pass=document.getElementById("password").value;
-    try{
-      await createUserWithEmailAndPassword(auth,email,pass);
-      alert("Cadastro realizado! Faça login.");
-    }catch(e){ alert(e.message); }
-  }
-
-  window.login=async function(){
-    const email=document.getElementById("email").value;
-    const pass=document.getElementById("password").value;
-    try{
-      const userCredential=await signInWithEmailAndPassword(auth,email,pass);
-      currentUser=userCredential.user;
-      alert("Login realizado! Bem-vindo "+currentUser.email);
-    }catch(e){ alert(e.message); }
-  }
-
-  window.logout=async function(){
-    await signOut(auth);
-    location.reload();
-  }
+// Login
+window.login = async function(){
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("password").value;
+  try {
+    await signInWithEmailAndPassword(auth,email,pass);
+    // Redireciona para quiz.html
+    window.location.href = "quiz.html?user=" + encodeURIComponent(email);
+  } catch(e){ alert(e.message); }
+}
 </script>
 
 <style>
 body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#6a11cb,#2575fc);color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
-.container{background:rgba(0,0,0,0.7);padding:30px;border-radius:15px;width:90%;max-width:600px;text-align:center}
+.container{background:rgba(0,0,0,0.7);padding:30px;border-radius:15px;width:90%;max-width:400px;text-align:center}
 h1{font-size:2em;margin-bottom:20px}
 input{padding:10px;margin:10px 0;width:80%;border-radius:8px;border:none}
-button{padding:10px 20px;margin:10px;border:none;border-radius:10px;cursor:pointer}
+button{padding:10px 20px;margin:10px;border:none;border-radius:10px;cursor:pointer;background:#ff6b81;color:#fff}
 button:hover{transform:scale(1.05)}
-.theme-btn{background:#ff6b81;color:#fff}
-.answer-btn{display:block;background:#1e90ff;color:#fff;border-radius:8px;padding:10px;margin:10px 0}
-.answer-btn.correct{background:#2ed573 !important}
-.answer-btn.wrong{background:#ff4757 !important}
-.hidden{display:none}
-.timer{font-size:1.2em;margin-bottom:10px}
-.score{font-size:1.5em;margin-top:15px}
 </style>
-
+</head>
 <body>
-<div class="container" id="login-container">
+<div class="container">
 <h1>Login / Cadastro</h1>
 <input type="email" id="email" placeholder="Email"><br>
 <input type="password" id="password" placeholder="Senha"><br>
-<button class="theme-btn" onclick="register()">Cadastrar</button>
-<button class="theme-btn" onclick="login()">Login</button>
-<p id="msg"></p>
-</div>
-
-<div class="container hidden" id="quiz-container">
-<h1>Escolha o Tema</h1>
-<button class="theme-btn" onclick="startQuiz('matematica')">Matemática</button>
-<button class="theme-btn" onclick="startQuiz('historia')">História</button>
-<button class="theme-btn" onclick="startQuiz('geografia')">Geografia</button>
-
-<div id="quiz" class="">
-<div class="timer" id="timer">Tempo: 15s</div>
-<div class="question" id="question"></div>
-<div class="answers" id="answers"></div>
-<div class="score hidden" id="score"></div>
-<button id="restart-btn" class="theme-btn hidden" onclick="restartQuiz()">Jogar novamente</button>
-<button class="theme-btn" onclick="logout()">Sair</button>
-</div>
+<button onclick="register()">Cadastrar</button>
+<button onclick="login()">Login</button>
 </div>
 </body>
 </html>
